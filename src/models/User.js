@@ -1,57 +1,3 @@
-// const mongoose = require("mongoose");
-
-// const userSchema = new mongoose.Schema(
-//   {
-//     role: {
-//       type: String,
-//       default: "user",
-//       enum: ["user", "admin"],
-//     },
-
-//     name: {
-//       type: String,
-//       required: true,
-//       trim: true,
-//     },
-
-//     email: {
-//       type: String,
-//       required: true,
-//       unique: true,
-//       lowercase: true,
-//       trim: true,
-//     },
-
-//     password: {
-//       type: String,
-//       required: true,
-//       minlength: 8,
-//     },
-
-//     isVerified: {
-//       type: Boolean,
-//       default: false,
-//     },
-    
-//     // refreshToken: String,
-
-//     emailVerificationToken: String,
-//     emailVerificationExpires: Date,
-
-//     passwordResetToken: String,
-//     passwordResetExpires: Date,
-//   },
-//   { timestamps: true }
-// );
-
-// const User = mongoose.model("User", userSchema);
-
-// module.exports = User;
-
-
-
-
-
 const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
@@ -88,6 +34,15 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
 
+    // --- New fields for Delete Account ---
+    pendingDeletion: {
+      type: Boolean,
+      default: false,
+    },
+    deletionRequestedAt: {
+      type: Date,
+    },
+
     passwordChangedAt: Date,
 
     emailVerificationToken: String,
@@ -96,7 +51,7 @@ const userSchema = new mongoose.Schema(
     passwordResetToken: String,
     passwordResetExpires: Date,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const User = mongoose.model("User", userSchema);

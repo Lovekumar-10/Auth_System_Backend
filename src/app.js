@@ -6,6 +6,8 @@ const helmet = require("helmet");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const { globalLimiter } = require("./middleware/rateLimiter");
+const cron = require("node-cron");
+const deletePendingUsers = require("./utils/deletePendingUsers");
 
 
 
@@ -18,8 +20,8 @@ connectDB();
 // ✅ 🔥 CORS FIRST (MOST IMPORTANT)
 app.use(
   cors({
-    // origin: "http://localhost:5173",
-    origin: "https://auth-system-frontend-alpha.vercel.app",
+    origin: "http://localhost:5173",
+    // origin: "https://auth-system-frontend-alpha.vercel.app",
     credentials: true,
   })
 );
@@ -66,6 +68,13 @@ app.use(cookieParser());
 
 // router defined ok  
 app.use("/api/auth", authRoutes);
+
+
+// Cron Job for deleting users pending deletion
+cron.schedule("0 1 * * *", () => {
+  console.log("Running daily cleanup for pending deletion users...");
+  deletePendingUsers();
+});
 
 app.use((err, req, res, next) => {
 

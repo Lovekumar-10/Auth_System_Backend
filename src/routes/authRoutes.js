@@ -1,13 +1,12 @@
-
-
-
-
-
 const express = require("express");
 const router = express.Router();
+const asyncHandler = require("../middleware/handlers/asyncHandler");
+const User = require("../models/User");
+
 
 const { protect } = require("../middleware/authMiddleware");
 const { roleCheck } = require("../middleware/roleMiddleware");
+
 
 // Validators
 const {
@@ -18,8 +17,7 @@ const {
 } = require("../validators/authValidator");
 
 const { resendLimiter } = require("../middleware/resendLimiter");
-const { authLimiter } = require("../middleware/rateLimiter"); 
-
+const { authLimiter } = require("../middleware/rateLimiter");
 
 const refreshToken = require("../controllers/auth/refreshTokenController");
 
@@ -32,12 +30,15 @@ const logoutUser = require("../controllers/auth/logoutController");
 const logoutAllDevices = require("../controllers/auth/logoutAllDevicesController");
 
 const checkVerification = require("../controllers/auth/checkVerificationController");
-const { requestPasswordReset, resetPassword, } = require("../controllers/auth/passwordResetController");
+const {
+  requestPasswordReset,
+  resetPassword,
+} = require("../controllers/auth/passwordResetController");
 const changePassword = require("../controllers/auth/changePasswordController");
 const resendVerificationEmail = require("../controllers/auth/resendVerificationEmailController");
 const getMeController = require("../controllers/auth/getMeController");
 
-const User = require("../models/User");
+
 
 // =========================
 // Public Routes
@@ -48,25 +49,20 @@ router.post(
   "/forgot-password",
   authLimiter,
   forgotPasswordValidation,
-  requestPasswordReset // Pehle yeh function chalega
+  requestPasswordReset, // Pehle yeh function chalega
 );
 
-
-
-
-
 router.post(
-  "/reset-password/:token", 
+  "/reset-password/:token",
   authLimiter,
   resetPasswordValidation,
-  resetPassword 
+  resetPassword,
 );
 
 router.post("/register", authLimiter, registerValidation, registerUser);
 router.post("/login", authLimiter, loginValidation, loginUser);
 
 router.post("/refresh-token", refreshToken);
-
 
 router.get("/check-verification", authLimiter, checkVerification);
 router.get("/verify-email/:token", authLimiter, verifyEmail);
@@ -81,10 +77,63 @@ router.post("/logout-all", protect, logoutAllDevices);
 router.post("/logout", protect, logoutUser);
 router.post("/change-password", protect, changePassword);
 
-
-
 router.get("/me", protect, getMeController);
 
+
+router.post(
+  "/delete-account",
+  protect,
+  asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id);
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (user.pendingDeletion) {
+      return res
+        .status(400)
+        .json({ message: "Account deletion already requested" });
+    }
+
+    user.pendingDeletion = true;
+    user.deletionRequestedAt = new Date();
+
+    await user.save();
+
+    // Optional: you can send an email notification here
+
+    return res.status(200).json({
+      message:
+        "Account deletion requested. You have 15 days to undo this action.",
+    });
+  }),
+);
+
+
+
+router.post(
+  "/cancel-deletion",
+  protect,
+  asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id);
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (!user.pendingDeletion) {
+      return res
+        .status(400)
+        .json({ message: "No deletion request found for this account." });
+    }
+
+    user.pendingDeletion = false;
+    user.deletionRequestedAt = null;
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Account deletion canceled. Your account is active again.",
+    });
+  })
+);
 
 // =========================
 // Admin Routes
@@ -105,7 +154,7 @@ router.delete(
       console.error("Delete User Error:", err);
       res.status(500).json({ message: "Server Error" });
     }
-  }
+  },
 );
 
 module.exports = router;
