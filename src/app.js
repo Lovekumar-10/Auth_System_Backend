@@ -18,7 +18,8 @@ connectDB();
 // ✅ 🔥 CORS FIRST (MOST IMPORTANT)
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    // origin: "http://localhost:5173",
+    origin: "https://auth-system-frontend-alpha.vercel.app",
     credentials: true,
   })
 );
