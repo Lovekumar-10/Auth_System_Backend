@@ -1,4 +1,3 @@
-
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -24,14 +23,12 @@ const loginUser = async (req, res) => {
     throw error;
   }
 
-
   if (!user.isVerified) {
     const error = new Error("Please verify your email before logging in");
     error.statusCode = 403;
     error.logType = EVENTS.LOGIN_FAILED;
     throw error;
   }
-
 
   const isMatch = await bcrypt.compare(password + PEPPER, user.password);
   if (!isMatch) {
@@ -44,38 +41,32 @@ const loginUser = async (req, res) => {
     }
   }
 
-
   const jti = uuidv4();
 
-
   const accessToken = jwt.sign(
-    { id: user._id,
-      role: user.role ,
-      jti: jti
-    },
+    { id: user._id, role: user.role, jti: jti },
     process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: "15m" }
+    { expiresIn: "15m" },
   );
 
   const refreshToken = jwt.sign(
     { id: user._id, jti },
     process.env.REFRESH_TOKEN_SECRET,
-    { expiresIn: "7d" }
+    { expiresIn: "7d" },
   );
 
-  
   const hashedRefreshToken = crypto
     .createHash("sha256")
     .update(refreshToken)
     .digest("hex");
 
-
-  const sessions = await UserSession.find({ userId: user._id }).sort({ createdAt: 1 });
+  const sessions = await UserSession.find({ userId: user._id }).sort({
+    createdAt: 1,
+  });
 
   if (sessions.length >= MAX_SESSIONS) {
     await UserSession.deleteOne({ _id: sessions[0]._id }); // delete oldest
   }
-
 
   const device = req.headers["user-agent"] || "Unknown Device";
   const ip = req.ip;
@@ -90,7 +81,6 @@ const loginUser = async (req, res) => {
   });
 
   console.log(`✅ [LOGIN] ${user.email} logged in from ${device}`);
-
 
   res.cookie("token", accessToken, {
     httpOnly: true,
@@ -108,19 +98,35 @@ const loginUser = async (req, res) => {
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
- 
-  return res.status(200).json({
-    message: "You have logged in successfully",
-    user: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    },
-    
-  });
+  // return res.status(200).json({
+  //   message: "You have logged in successfully",
+  //   user: {
+  //     _id: user._id,
+  //     name: user.name,
+  //     email: user.email,
+  //     role: user.role,
+  //     pendingDeletion: user.pendingDeletion,
+  //     deletionRequestedAt: user.deletionRequestedAt,
+  //   },
+  // });
+
+return res.status(200).json({
+  message: "You have logged in successfully",
+  deletionScheduled: user.pendingDeletion, // ✅ ADD THIS
+  deletionMessage: user.pendingDeletion
+    ? "Your account is scheduled for deletion"
+    : null,
+
+  user: {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    pendingDeletion: user.pendingDeletion,
+    deletionRequestedAt: user.deletionRequestedAt,
+  },
+});
+
 };
 
-module.exports = eventWrapper(EVENTS.LOGIN_SUCCESS)(
-  asyncHandler(loginUser)
-);
+module.exports = eventWrapper(EVENTS.LOGIN_SUCCESS)(asyncHandler(loginUser));

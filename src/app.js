@@ -6,10 +6,6 @@ const helmet = require("helmet");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const { globalLimiter } = require("./middleware/rateLimiter");
-const cron = require("node-cron");
-const deletePendingUsers = require("./utils/deletePendingUsers");
-
-
 
 const app = express();
 
@@ -70,11 +66,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 
 
-// Cron Job for deleting users pending deletion
-cron.schedule("0 1 * * *", () => {
-  console.log("Running daily cleanup for pending deletion users...");
-  deletePendingUsers();
-});
+
 
 app.use((err, req, res, next) => {
 
